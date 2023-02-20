@@ -1,7 +1,7 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
 
-app.get('/api/blogs', (request, response) => {
+blogsRouter.get('/', (request, response) => {
     Blog
       .find({})
       .then(blogs => {
@@ -9,8 +9,15 @@ app.get('/api/blogs', (request, response) => {
       })
   })
   
-app.post('/api/blogs', (request, response, next) => {
-    const blog = new Blog(request.body)
+blogsRouter.post('/', (request, response, next) => {
+  const body = request.body
+  console.log("post blog", body)
+  const blog = new Blog({
+      title: body.title,
+      author: body.author,
+      url: body.url,
+      likes: body.likes
+  })
     blog
         .save()
         .then(result => {
