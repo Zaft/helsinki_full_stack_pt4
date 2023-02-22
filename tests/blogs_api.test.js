@@ -6,6 +6,7 @@ const helper = require('./test_helper')
 
 const api = supertest(app)
 
+
 beforeEach(async () => {
 	await Blog.deleteMany({})
 	console.log('cleared')
@@ -15,9 +16,9 @@ beforeEach(async () => {
 	await Promise.all(promiseArray)
 })
 
-test('blogs are returns as json', async () => {
+test('blogs are returned as json', async () => {
 	await api
-		.get('api/blogs')
+		.get('/api/blogs')
 		.expect(200)
 		.expect('Content-Type', /application\/json/)
 }, 100000)
@@ -25,6 +26,7 @@ test('blogs are returns as json', async () => {
 test('a valid blog is added', async () => {
 	const newBlog = {
 		author: 'Tom Bomb',
+		title: 'Tom Bomb Blog Post 1',
 		url: 'http://www.tombomb.com/blog1',
 		likes: 4
 	}
@@ -35,58 +37,81 @@ test('a valid blog is added', async () => {
 		.expect(201)
 		.expect('Content-Type', /application\/json/)
 
-	const response = await api.get('/api/blogs')
-	// TODO: Validate propeties are being create correctly
-
-	expect(response.body).toHaveLength(helper.initialBlogPosts.length + 1)
+	const blogsAtEnd = await helper.blogsInDb()
+	expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
+	const blog = blogsAtEnd.pop()
+	expect(blog.author).toEqual(newBlog.author)
+	expect(blog.title).toEqual(newBlog.title)
+	expect(blog.url).toEqual(newBlog.url)
+	expect(blog.likes).toEqual(newBlog.likes)
 })
 
 test('test unique identifier is name id', async () => {
-	const newBlog = {
-		author: 'Tom Bomb',
-		url: 'http://www.tombomb.com/blog1',
-		likes: 4
-	}
-
-	await api
-		.post('/api/blogs')
-		.send(newBlog)
-		.expect(201)
-		.expect('Content-Type', /application\/json/)
-
-	const response = await api.get('/api/blogs')
-	expect(response.body).toBeDefined('id')
+	const blogsAtEnd = await helper.blogsInDb()
+	blogsAtEnd.forEach(blog => expect(blog.id).toBeDefined())
 })
 
 test('likes property is initialized to zero when not provided', async () => {
 	const blog = {
 		author: 'Tom Bomb',
+		title: 'Tom Bomb Blog 1',
 		url: 'http://www.tombomb.com/blog1',
 	}
 
-	const newBlog = await api
+	const response = await api
 		.post('/api/blogs')
 		.send(blog)
 		.expect(201)
 		.expect('Content-Type', /application\/json/)
 
-	console.log('post newNote', newBlog)
-	// TODO: confirm that the likes property has a value of 0
-	expect(newBlog).toBeDefined('')
+	expect(response.body.likes).toEqual(0)
+})
+
+describe('deletion of a blog', () => {
+	test('succeeds with a status of 204 if id is valid', async() => {
+		const blogsAtStart = await helper.blogsInDb()
+		const blogToDelete = blogsAtStart[0]
+
+		await api
+			.delete(`/api/blogs/${blogToDelete.id}`)
+			.expect(204)
+
+		const blogsAtEnd = await helper.blogsInDb()
+
+		expect(blogsAtEnd).toHaveLength(
+			helper.initialBlogs.length -1
+		)
+	})
+})
+
+describe('updating a blog', () => {
+	test('updating likes', async () => {
+		const blogsAtStart = await helper.blogsInDb()
+		const newLikesValue = 9
+		let blogToUpdate = blogsAtStart[0]
+		blogToUpdate.likes = newLikesValue
+
+		await api
+			.put(`/api/blogs/${blogToUpdate.id}`)
+			.send(blogToUpdate)
+			.expect(200)
+
+		const blogsAtEnd = await helper.blogsInDb()
+		const updatedBlog = blogsAtEnd[0]
+		expect(updatedBlog.likes).toEqual(newLikesValue)
+	})
 })
 
 test('server responds with 400 status if title or url are missing from request', async () => {
 	const blog = {
 		author: 'Test Tom',
-		likes: 5
 	}
 
 	// we are expecting a 400 response due to missing fields
-	const newBlog = await api
-		.post('/api/blog')
+	await api
+		.post('/api/blogs')
 		.send(blog)
 		.expect(400)
-	console.log('newBlog ', newBlog)    
 })
 
 test('number of likes can be updated for an existing blog post', async () => {
@@ -96,7 +121,7 @@ test('number of likes can be updated for an existing blog post', async () => {
 		url: helper.initialBlogs[0].url,
 		likes: helper.initialBlogs[0].likes + 3
 	}
-    
+
 	const result = await api
 		.put('/api/blog/')
 		.send(updatedBlog)

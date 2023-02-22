@@ -27,7 +27,7 @@ blogsRouter.post('/', async (request, response) => {
 		title: body.title,
 		author: body.author,
 		url: body.url,
-		likes: body.likes
+		likes: !body.likes ? 0 : body.likes
 	})
 
 	const savedBlog = await blog.save()
@@ -39,7 +39,12 @@ blogsRouter.put('/:id', async (request, response) => {
 
 	const updatedBlog = await Blog.findByIdAndUpdate(
 		request.params.id,
-		{ title, author, url, likes},
+		{ 
+			title: title, 
+			author: author,
+			url: url,
+			likes: likes 
+		},
 		{ new: true, runValidators: true, context: 'query'})
 
 	response.json(updatedBlog)
@@ -47,7 +52,7 @@ blogsRouter.put('/:id', async (request, response) => {
 
 blogsRouter.delete('/:id', async (request, response) => {
 	await Blog.findByIdAndRemove(request.params.id)
-	response.state(204).end()
+	response.status(204).end()
 })
 
 module.exports = blogsRouter

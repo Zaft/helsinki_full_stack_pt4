@@ -25,7 +25,6 @@ const favoriteBlog = (blogs) => {
 const mostBlogs = (blogs) => {
 	if (blogs.length === 0) return null
 	const authorBlogs = blogs.reduce((blog, {author}) => {
-		// console.log('reduce author', author)
 		blog[author] = blog[author] || 0
 		blog[author] += 1
 		return blog
@@ -51,13 +50,11 @@ const mostLikes = (blogs) => {
 		blog[author] += likes
 		return blog
 	}, {})
-	// console.log('authorLikes', authorLikes)
 
 	const mostLikes = Object.keys(authorLikes).map((key) => {
 		return [key, authorLikes[key]]
 	}).sort((a, b) => b[1] - a[1])[0]
 
-	// console.log('most Likes', mostLikes)
 	return {
 		author: mostLikes[0],
 		likes: mostLikes[1]
