@@ -40,38 +40,51 @@ describe('creation of blogs', () => {
 	
 	test('likes property is initialized to zero when not provided', async () => {
 		
-		const currentUser = {
-			username: helper.initialUsers[0].username,
-			password: helper.initialUsers[0].password
+		const usersInDb = await helper.usersInDb()
+		const password = 'testy'
+		const testUser = {
+			username: usersInDb[0].username,
+			password: password
 		}
+		
 		const loginResponse = await api
 			.post('/api/login')
-			.send(currentUser)
+			.send(testUser)
 			.expect(200)
 			.expect('Content-Type', /application\/json/)
-		console.log(loginResponse)
+		
+		const token = `bearer ${loginResponse.body.token}`
 
-		const blog = {
+		const newBlog = {
 			author: 'Tom Bomb',
 			title: 'Tom Bomb Blog 1',
 			url: 'http://www.tombomb.com/blog1',
-			user: helper.initialUsers[0]._id,
+			user: usersInDb[0].id
 		}
-		console.log('new blog', blog)
 		
-		const token = 'thisIsATemporaryStringForTesting'
-		const response = await api
+		await api
 			.post('/api/blogs')
-			.setHeader('Authorization', token)
-			.send(blog)
+			.send(newBlog)
+			.set({ Authorization: token })
 			.expect(201)
 			.expect('Content-Type', /application\/json/)
-		
-		expect(response.body.likes).toEqual(0)
+
+		const blogsAtEnd = await helper.blogsInDb()
+		expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
+
+		const blog = blogsAtEnd.pop()
+		expect(blog.author).toEqual(newBlog.author)
+		expect(blog.title).toEqual(newBlog.title)
+		expect(blog.url).toEqual(newBlog.url)
+		expect(blog.likes).toEqual(0)
+		expect(blog.userId).toEqual(newBlog.userId)
+	
+		const user = await helper.usersInDb()
+		expect(user[0].blogs.toString()).toContain(blog.id)
 	})
 	
 	test('a valid blog is added', async () => {
-		// create test user for test
+
 		const usersInDb = await helper.usersInDb()
 		const password = 'testy'
 		const testUser = {
@@ -117,6 +130,41 @@ describe('creation of blogs', () => {
 		expect(user[0].blogs.toString()).toContain(blog.id)
 
 	}, 100000)
+
+	test('creation fails when proper response when token is not provided', async () => {
+		const usersInDb = await helper.usersInDb()
+		const password = 'testy'
+		const testUser = {
+			username: usersInDb[0].username,
+			password: password
+		}
+		
+		const loginResponse = await api
+			.post('/api/login')
+			.send(testUser)
+			.expect(200)
+			.expect('Content-Type', /application\/json/)
+		
+		const token = `bearer ${loginResponse.body.token}`
+		
+		const newBlog = {
+			author: 'Tom Bomb',
+			title: 'Tom Bomb Blog Post 1',
+			url: 'http://www.tombomb.com/blog1',
+			likes: 4,
+			user: usersInDb[0].id
+		}
+	
+		await api
+			.post('/api/blogs')
+			.send(newBlog)
+			.set({ Authorization: '' })
+			.expect(401)
+			.expect('Content-Type', /application\/json/)
+	
+		const blogsAtEnd = await helper.blogsInDb()
+		expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+	})
 })
 
 describe('deletion of a blog', () => {
