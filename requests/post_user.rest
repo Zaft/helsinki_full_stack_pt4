@@ -1,0 +1,10 @@
+POST http://localhost:3001/api/users
+content-type: application/json
+# Authorization: bearer
+
+{
+    "username": "t",
+    "name": "Tommy Test Name",
+    "password": "",
+    "blogs": []
+}
