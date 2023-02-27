@@ -3,8 +3,8 @@ content-type: application/json
 # Authorization: bearer
 
 {
-    "username": "t",
-    "name": "Tommy Test Name",
-    "password": "",
+    "username": "username1",
+    "name": "Tommy Tester",
+    "password": "testy",
     "blogs": []
 }

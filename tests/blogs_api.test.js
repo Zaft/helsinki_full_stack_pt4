@@ -9,6 +9,7 @@ const api = supertest(app)
 
 beforeEach(async () => {
 	await Blog.deleteMany({})
+	await User.deleteMany({})
 	console.log('cleared')
 	const blogObjects = helper.initialBlogs
 		.map(blog => new Blog(blog))
@@ -70,24 +71,40 @@ describe('creation of blogs', () => {
 	})
 	
 	test('a valid blog is added', async () => {
+		// create test user for test
 		const usersInDb = await helper.usersInDb()
+		const password = 'testy'
+		const testUser = {
+			username: usersInDb[0].username,
+			password: password
+		}
+		
+		const loginResponse = await api
+			.post('/api/login')
+			.send(testUser)
+			.expect(200)
+			.expect('Content-Type', /application\/json/)
+		
+		const token = `bearer ${loginResponse.body.token}`
+		
 		const newBlog = {
 			author: 'Tom Bomb',
 			title: 'Tom Bomb Blog Post 1',
 			url: 'http://www.tombomb.com/blog1',
 			likes: 4,
-			userId: usersInDb[0].id
+			user: usersInDb[0].id
 		}
 	
 		await api
 			.post('/api/blogs')
 			.send(newBlog)
+			.set({ Authorization: token })
 			.expect(201)
 			.expect('Content-Type', /application\/json/)
 	
 		const blogsAtEnd = await helper.blogsInDb()
 		expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
-		
+
 		const blog = blogsAtEnd.pop()
 		expect(blog.author).toEqual(newBlog.author)
 		expect(blog.title).toEqual(newBlog.title)
@@ -95,9 +112,11 @@ describe('creation of blogs', () => {
 		expect(blog.likes).toEqual(newBlog.likes)
 		expect(blog.userId).toEqual(newBlog.userId)
 
-		const user = await helper.blogsInDb()[0]
-		expect(user.blogs).toContain(blog.id)
-	})
+		const user = await helper.usersInDb()
+		
+		expect(user[0].blogs.toString()).toContain(blog.id)
+
+	}, 100000)
 })
 
 describe('deletion of a blog', () => {
